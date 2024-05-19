@@ -98,7 +98,37 @@ function authenticateToken(req, res, next) {
   );
 }
 
+router.put("/update-password", async (req, res, next) => {
+  try {
+    const { email, currentPassword, newPassword } = req.body;
+    const user = await User.findOne({ email });
 
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    user.comparePassword(currentPassword, async (err, isMatch) => {
+      if (err) throw err;
+
+      if (!isMatch) {
+        return res
+          .status(401)
+          .json({ message: "Current password is incorrect" });
+      }
+      user.password = newPassword;
+
+      await user.save();
+      const newToken = jwt.sign({ userId: user._id }, config.jwtSecret, {
+        expiresIn: "1d",
+      });
+
+      res
+        .status(200)
+        .json({ message: "Password updated successfully", newToken });
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 
 module.exports = router;
